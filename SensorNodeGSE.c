@@ -36,6 +36,7 @@
 #define  CRC_OK             (BIT7)          // CRC_OK bit 
 #define  PATABLE_VAL        (0x51)          // 0 dBm output 
 
+
 //extern RF_SETTINGS rfSettings;
 RF_SETTINGS rfSettings_plus = {
     0x08,   // FSCTRL1   Frequency synthesizer control.
