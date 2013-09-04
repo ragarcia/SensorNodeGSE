@@ -122,7 +122,7 @@ void main( void )
 	char hdr_str[17] = "packet contents: ";
 	char init_str[10] = "starting\r\n";
 
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < (sizeof init_str); i++) {
 		while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
 		UCA0TXBUF = init_str[i];
 	}
@@ -155,7 +155,7 @@ void main( void )
 //		fprintf(MYF,"\n");
 //	fflush(MYF);
 
-	for (i = 0; i < 17; i++) {
+	for (i = 0; i < (sizeof hdr_str); i++) {
 		while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
 		UCA0TXBUF = hdr_str[i];
 	}
