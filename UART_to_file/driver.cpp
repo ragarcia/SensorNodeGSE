@@ -37,7 +37,7 @@ int main(int argc, const char* argv[]) {
   BOOL bPortReady;
   DCB dcb;
 
-  hCom = CreateFile( TEXT("\\\\.\\COM9"),
+  hCom = CreateFile( TEXT("\\\\.\\COM15"),
     GENERIC_READ | GENERIC_WRITE,
     0, // exclusive access
     0, // no security
