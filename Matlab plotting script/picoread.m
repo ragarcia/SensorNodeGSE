@@ -73,6 +73,16 @@ while(1)
             %set(H2,'LineWidth',2);
             legend('current energy', 'duty cycle', 'cap min','cap max', 'cap avg', 'CRC')
         end
+        
+        %NOTE: I wanted to add a scatterplot of current/voltage
+        %measurements... replace the placeholder terms in the lines below,
+        %add the current measurements into the telemetry stream, add the
+        %subplot lines in to the above plotting commands,
+        %and un-comment the lines below to add this plot
+        %...........................................
+        %subplot(2,1,2);
+        %plot(CURRENTVALUES,ENERGYVALUES,'.');
+        
         %keyboard
         %pause(0.01)
     end
