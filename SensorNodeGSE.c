@@ -158,7 +158,7 @@ void main( void )
 		while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
 		UCA0TXBUF = hdr_str[i];
 	}
-	for (i = 0; i < PACKET_LEN; i++) {
+	for (i = 0; i < PACKET_LEN+1; i++) {
 		while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
 		if ((RxBuffer[i]>>4) < 10) {
 		  UCA0TXBUF = (RxBuffer[i]>>4)+0x30;

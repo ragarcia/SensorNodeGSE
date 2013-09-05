@@ -37,7 +37,7 @@ int main(int argc, const char* argv[]) {
   BOOL bPortReady;
   DCB dcb;
 
-  hCom = CreateFile( TEXT("\\\\.\\COM14"),
+  hCom = CreateFile( TEXT("\\\\.\\COM9"),
     GENERIC_READ | GENERIC_WRITE,
     0, // exclusive access
     0, // no security
@@ -69,7 +69,7 @@ int main(int argc, const char* argv[]) {
   //  printf("Usage: UART_to_file.exe [COM port number] [filename]\n");
   //}
  
-  LOG = fopen("C:\\Users\\ragarci2\\workspace_v5_4\\Fixed_LT_FIFO_plus\\MHZ_868\\loggy.txt","w");
+  LOG = fopen("C:\\Users\\ragarci2\\workspace_v5_4\\SensorNodeGSE\\MHZ_868\\loggy.txt","w");
   char mybuf[500];
   //setvbuf(LOG, mybuf, _IOLBF, 500);
   setvbuf(LOG, NULL, _IONBF, 0);
