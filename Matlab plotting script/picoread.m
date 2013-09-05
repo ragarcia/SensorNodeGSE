@@ -6,27 +6,88 @@ vals = [];
 FID = fopen('loggy.txt','r');
 tline = fgetl(FID);
 
-% while  (fgetl(FID) ~= -1)
-%     % scan to end of file
-% end
+%       [current energy (0:1) duty cycle (2:3) cap_min (4:5) cap_max (6:7) cap_avg (8:9) 
+%       current_val (10:11) current_min (12:13) current_max(14:15) wake_stat (16) pkt_cnt (17)
+%       (blank bytes) RTC (27:30) chksum (31) RSSI (32)]
+
+legend_arr = {'current energy' 'duty cycle' 'cap\_min'  'cap\_max' 'cap\_avg' ... 
+                'current\_val' 'current\_min' 'current\_max' 'wake\_stat' 'pkt\_cnt' ...
+                'RTC' 'chksum' 'RSSI' 'Data Rate'};
+%my_hist_data = [];
+my_hist_data = zeros(1024,1024);
+
+set(figure(1),'color','w');
+subplot(2,2,1)
+legend(legend_arr{1:10}, legend_arr{12:end});
+xlabel('Sample Number');
+ylabel('16 bit value');
+title('Telemetry');
+subplot(2,2,3);
+legend(legend_arr{6},legend_arr{1});
+title('Current Value and Current Energy');
+xlabel('Sample Number');
+ylabel('16 bit value');
+myimg = imagesc(my_hist_data);
+
+plot_ok = 0;
+cnt_ok = 0;
+pkt_cnt = 0;
+drate = 0;
+pkts_dropped = 0;
+last_pk_cnt = 0;
+tic;
+
+while  (fgetl(FID) ~= -1)
+    % scan to end of file
+end
 
 while(1)
-    while  (fgetl(FID) ~= -1)
-    % scan to end of file
-    end
-    pause(0.1 );
+%     while  (fgetl(FID) ~= -1)
+%     % scan to end of file
+%     end
+%     pause(0.1 );
 
     tline = fgetl(FID);
     
-    if (tline == -1)
-        pause(0.1)
-    else
+    if (length(tline) == 1)
+        if (plot_ok == 1)
+            
+            pkt_time = toc;
+            tic;
+            drate = round(pkt_cnt*32 / pkt_time);
+            
+            subplot(2,2,1);
+            plot([1:size(vals,1)], vals(:,3:5), 'LineWidth', 2);
+            legend(legend_arr{3:5});
+
+            subplot(2,2,2);
+            plot([1:size(vals,1)], vals(:,6:8), 'LineWidth', 2);
+            legend(legend_arr{6:8});
+
+            subplot(2,2,3);
+            %plot(vals(:,6), vals(:,1), '.', 'LineWidth', 2);
+            %hist(my_hist_data);
+             %p = imagesc(my_hist_data);
+            set(myimg,'CData',my_hist_data);
+            %legend(legend_arr{6},legend_arr{1});
+            %title('Current vs. Cap Voltage');
+            colorbar();
+
+            subplot(2,2,4);
+            plot([1:size(vals,1)], [vals(:,2) vals(:,9:10) vals(:,12:14)], 'LineWidth', 2);
+            legend(legend_arr{2}, legend_arr{9:10}, legend_arr{12:14});
+            
+            annotation('textbox',[0.9 .5 .011 .02], 'string', ['packets dropped ' num2str(pkts_dropped)], 'FontSize', 9, 'EdgeColor', [0 0 0], 'LineStyle','none');
+            
+        else
+            plot_ok = 1;
+        end
+        pause(0.1);
+        pkt_cnt = 0;
+    elseif (length(tline) == 116)
+        pkt_cnt = pkt_cnt + 1;
         cvals = tline(18:end);
         disp(cvals);
-
-%       [current energy (0:1) duty cycle (2:3) cap_min (4:5) cap_max (6:7) cap_avg (8:9) 
-%       current_val (10:11) current_min (12:13) current_max(14:15) wake_stat (16) pkt_cnt (17)
-%       (blank bytes) RTC (27:30) chksum (31)]
 
         newval = [hex2dec(cvals(1:find(cvals == ' ',1)))];
         cvals = cvals(find(cvals == ' ',1)+1:end);
@@ -35,8 +96,7 @@ while(1)
             newval = [newval hex2dec(cvals(1:find(cvals == ' ',1)))];
             cvals = cvals(find(cvals == ' ',1)+1:end);
         end
-%         csum = bitxor(newval(1:end-1));
-        newval = [newval(1)*2^8+newval(2) ...       % current energy
+        formatted_values = [newval(1)*2^8+newval(2) ...       % current energy
                     newval(3)*2^8+newval(4) ...     % duty cycle
                     newval(5)*2^8+newval(6) ...     % cap_min
                     newval(7)*2^8+newval(8) ...     % cap_max
@@ -49,52 +109,27 @@ while(1)
                     newval(28)*2^24+newval(29)*2^16+newval(30)*2^8+newval(31) ...   %RTC
                     newval(32) ...    % chksum
                     newval(end)]; % RSSI
-        %newval = [newval(1)*2^8+newval(2)];
-%         if (csum == newval(end))
-%                 vals = [vals; newval(1:end-1)];
-%         end
-        if (length(vals) < 100)
-            vals = [vals; newval];
-        else
-            vals = [vals(2:end,:);newval];
+        
+        %my_hist_data = [my_hist_data; formatted_values(1) formatted_values(6)];
+        if (formatted_values(1) < 1024 && formatted_values(6) < 1024 && formatted_values(1) ~= 0 && formatted_values(6) ~= 0)
+            my_hist_data(formatted_values(1), formatted_values(6)) = my_hist_data(formatted_values(1), formatted_values(6)) + 1;
         end
-        set(figure(1),'color','w');
-
         if (length(vals) < 100)
-            %subplot(2,1,2)
-            %[AX,H1,H2] = plotyy([1:size(vals,1)], [vals(:,1:5) vals(:,7)], [1:size(vals,1)], vals(:,6));
-            plot([1:size(vals,1)], [vals(:,1:10) vals(:,12:end)]);
-            %plot([1:size(vals,1)], [vals(:,:)]);
-            %ylim([0 2^30]);
-            %set(AX(1),'xlim',[1 100]);
-            %set(AX(2),'xlim',[1 100]);
-            %set(AX,'xlim',[1 100]);
-            %set(H1,'LineWidth',2);
-            %set(H2,'LineWidth',2);
-            legend('current energy', 'duty cycle', 'cap min','cap max', 'cap avg', 'CRC')
+            vals = [vals; formatted_values drate];
         else
-            %subplot(2,1,1)
-            %plot(vals,'LineWidth',3);ylim([0 2^10])
-            %subplot(2,1,2)
-            %plot(vals(end-99:end,:),'LineWidth',3);ylim([0 2^30]);
-            %[AX,H1,H2] = plotyy([1:size(vals,1)], [vals(:,1:5) vals(:,7)], [1:size(vals,1)], vals(:,6));
-            plot([1:size(vals,1)], [vals(:,1:10) vals(:,12:end)]);
-            %plot([1:size(vals,1)], [vals(:,:)]);
-            %set(H1,'LineWidth',2);
-            %set(H2,'LineWidth',2);
-            legend('current energy', 'duty cycle', 'cap min','cap max', 'cap avg', 'CRC')
+            vals = [vals(2:end,:);formatted_values drate];
         end
         
-        %NOTE: I wanted to add a scatterplot of current/voltage
-        %measurements... replace the placeholder terms in the lines below,
-        %add the current measurements into the telemetry stream, add the
-        %subplot lines in to the above plotting commands,
-        %and un-comment the lines below to add this plot
-        %...........................................
-        %subplot(2,1,2);
-        %plot(CURRENTVALUES,ENERGYVALUES,'.');
+        pkt_wrap = formatted_values(10) - last_pk_cnt;
+        if (last_pk_cnt > formatted_values(10))
+            pkt_wrap = formatted_values(10) + 256 - last_pk_cnt;
+        end
+        if (cnt_ok == 1)
+            pkts_dropped = pkts_dropped + pkt_wrap - 1;
+        else
+            cnt_ok = 1;
+        end
+        last_pk_cnt = formatted_values(10);
         
-        %keyboard
-        %pause(0.01)
     end
 end
