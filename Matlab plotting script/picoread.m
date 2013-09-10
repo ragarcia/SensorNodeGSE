@@ -28,6 +28,7 @@ title('Current Value and Current Energy');
 xlabel('Sample Number');
 ylabel('16 bit value');
 myimg = imagesc(my_hist_data);
+axis xy;   %sets the coordinate system so that(0,0) is in the lower left
 
 plot_ok = 0;
 cnt_ok = 0;
@@ -69,6 +70,10 @@ while(1)
             %hist(my_hist_data);
              %p = imagesc(my_hist_data);
             set(myimg,'CData',my_hist_data);
+            [x y] = ind2sub(size(my_hist_data),find(my_hist_data));
+            axes(myimg); %theoretically, I should be able to pass the handle into the axis function on the next line... but doesn't seem to be working for me
+            axis([min(min(x)-10,1) max(max(x)+10,1024) min(min(y)-10,0) max(max(y)+10,1024));   %scale the image axis appropriately
+            clear x y;
             %legend(legend_arr{6},legend_arr{1});
             %title('Current vs. Cap Voltage');
             colorbar();
