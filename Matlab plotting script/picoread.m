@@ -6,15 +6,16 @@ vals = [];
 FID = fopen('loggy.txt','r');
 tline = fgetl(FID);
 
-%       [current energy (0:1) duty cycle (2:3) cap_min (4:5) cap_max (6:7) cap_avg (8:9) 
+%       [cap val (0:1) duty cycle (2:3) cap_min (4:5) cap_max (6:7) cap_avg (8:9) 
 %       current_val (10:11) current_min (12:13) current_max(14:15) wake_stat (16) pkt_cnt (17)
 %       (blank bytes) RTC (27:30) chksum (31) RSSI (32)]
 
-legend_arr = {'current energy' 'duty cycle' 'cap\_min'  'cap\_max' 'cap\_avg' ... 
+legend_arr = {'cap val' 'duty cycle' 'cap\_min'  'cap\_max' 'cap\_avg' ... 
                 'current\_val' 'current\_min' 'current\_max' 'wake\_stat' 'pkt\_cnt' ...
                 'RTC' 'chksum' 'RSSI' 'Data Rate'};
 %my_hist_data = [];
 my_hist_data = zeros(1024,1024);
+my_hist_data_show = zeros(1024,1024);
 
 set(figure(1),'color','w');
 subplot(2,2,1)
@@ -28,7 +29,13 @@ title('Current Value and Current Energy');
 xlabel('Sample Number');
 ylabel('16 bit value');
 myimg = imagesc(my_hist_data);
+heataxis = gca;
 axis xy;   %sets the coordinate system so that(0,0) is in the lower left
+colormap('gray');
+cmap = colormap;    % retrieve current color map
+cmap(1,:)=[0 0 1];% set 'coolest' color to blue
+cmap(end,:)=[1 0 0];% set 'hottest' color to red
+colormap(cmap);
 
 plot_ok = 0;
 cnt_ok = 0;
@@ -43,11 +50,6 @@ while  (fgetl(FID) ~= -1)
 end
 
 while(1)
-%     while  (fgetl(FID) ~= -1)
-%     % scan to end of file
-%     end
-%     pause(0.1 );
-
     tline = fgetl(FID);
     
     if (length(tline) == 1)
@@ -58,8 +60,8 @@ while(1)
             drate = round(pkt_cnt*32 / pkt_time);
             
             subplot(2,2,1);
-            plot([1:size(vals,1)], vals(:,3:5), 'LineWidth', 2);
-            legend(legend_arr{3:5});
+            plot([1:size(vals,1)], vals(:,[1 3:5]), 'LineWidth', 2);
+            legend(legend_arr{[1 3:5]});
 
             subplot(2,2,2);
             plot([1:size(vals,1)], vals(:,6:8), 'LineWidth', 2);
@@ -69,10 +71,11 @@ while(1)
             %plot(vals(:,6), vals(:,1), '.', 'LineWidth', 2);
             %hist(my_hist_data);
              %p = imagesc(my_hist_data);
-            set(myimg,'CData',my_hist_data);
-            [x y] = ind2sub(size(my_hist_data),find(my_hist_data));
-            axes(myimg); %theoretically, I should be able to pass the handle into the axis function on the next line... but doesn't seem to be working for me
-            axis([min(min(x)-10,1) max(max(x)+10,1024) min(min(y)-10,0) max(max(y)+10,1024));   %scale the image axis appropriately
+            set(myimg,'CData',my_hist_data_show);
+            [x y] = ind2sub(size(my_hist_data_show),find(my_hist_data_show));
+            %keyboard
+            axes(heataxis); %theoretically, I should be able to pass the handle into the axis function on the next line... but doesn't seem to be working for me
+            axis([max(min(y)-10,1) min(max(y)+10,1024) max(min(x)-10,0) min(max(x)+10,1024)]);   %scale the image axis appropriately
             clear x y;
             %legend(legend_arr{6},legend_arr{1});
             %title('Current vs. Cap Voltage');
@@ -101,7 +104,7 @@ while(1)
             newval = [newval hex2dec(cvals(1:find(cvals == ' ',1)))];
             cvals = cvals(find(cvals == ' ',1)+1:end);
         end
-        formatted_values = [newval(1)*2^8+newval(2) ...       % current energy
+        formatted_values = [newval(1)*2^8+newval(2) ...       % cap val
                     newval(3)*2^8+newval(4) ...     % duty cycle
                     newval(5)*2^8+newval(6) ...     % cap_min
                     newval(7)*2^8+newval(8) ...     % cap_max
@@ -117,9 +120,15 @@ while(1)
         
         %my_hist_data = [my_hist_data; formatted_values(1) formatted_values(6)];
         if (formatted_values(1) < 1024 && formatted_values(6) < 1024 && formatted_values(1) ~= 0 && formatted_values(6) ~= 0)
-            my_hist_data(formatted_values(1), formatted_values(6)) = my_hist_data(formatted_values(1), formatted_values(6)) + 1;
+            %my_hist_data(formatted_values(1), formatted_values(6)) = my_hist_data(formatted_values(1), formatted_values(6)) + 1;
+            my_hist_data(formatted_values(1)+[-1:1], formatted_values(6)+[-1:1]) = my_hist_data(formatted_values(1)+[-1:1], formatted_values(6)+[-1:1]) + 1;
+            % show red cursor my_hist_data_show(formatted_values(1)+[-1:1], formatted_values(6)+[-1:1])
+            my_hist_data_show = my_hist_data;
+            mval = max(max(my_hist_data_show));
+            my_hist_data_show(formatted_values(1), formatted_values(6)+[-1:1]) = ones(1,3)*mval+1;
+            my_hist_data_show(formatted_values(1)+[-1:1], formatted_values(6)) = ones(3,1)*mval+1;
         end
-        if (length(vals) < 100)
+        if (length(vals) < 1000)
             vals = [vals; formatted_values drate];
         else
             vals = [vals(2:end,:);formatted_values drate];

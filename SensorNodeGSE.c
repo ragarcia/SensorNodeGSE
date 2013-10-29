@@ -82,9 +82,10 @@ unsigned char packetTransmit;
 
 unsigned char RxBuffer[PACKET_LEN_RX+2];
 unsigned char RxBufferLength = 0;
-const unsigned char TxBuffer[PACKET_LEN_TX]= {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};	// RSSI, PKT_CNT
+unsigned char TxBuffer[PACKET_LEN_TX]= {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};	// RSSI, PKT_CNT
 unsigned char buttonPressed = 0;
 unsigned int i = 0;
+unsigned int j = 0;
 unsigned int toggle = 0;
 
 unsigned char transmitting = 0;
@@ -92,6 +93,10 @@ unsigned char receiving = 0;
 
 FILE* MYF;
 char mybuf[20];
+
+const char hdr_str[17] = "packet contents: ";
+const char init_str[10] = "starting\r\n";
+const char echo_str[9]= "Sending: ";
 
 void main( void )
 {
@@ -104,9 +109,10 @@ void main( void )
 	P1MAP6 = PM_UCA0TXD;                      // Map UCA0TXD output to P1.6
 	PMAPPWD = 0;                              // Lock port mapping registers
 
-	P1DIR = BIT0+BIT6+BIT4+BIT7;                  // Set P1.6 as TX output, P1.4 as VCC, P1.7 as GND
+	//P1DIR = BIT0+BIT6+BIT4+BIT7;                  // Set P1.6 as TX output, P1.4 as VCC, P1.7 as GND
+	P1DIR = BIT0+BIT6+BIT4;                  // Set P1.6 as TX output, P1.4 as VCC
 	P1SEL |= BIT5 + BIT6;                     // Select P1.5 & P1.6 to UART function
-	P1OUT &= ~BIT7;							  // set GND pin low
+	//P1OUT &= ~BIT7;							  // set GND pin low
 	P1OUT |= BIT4;							  // set VCC pin high
 
 	UCA0CTL1 |= UCSWRST;                      // **Put state machine in reset**
@@ -119,9 +125,6 @@ void main( void )
 	UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
 	UCA0IE |= UCRXIE;                         // Enable USCI_A0 RX interrupt
 	__bis_SR_register(GIE);                   // interrupts enabled
-
-	char hdr_str[17] = "packet contents: ";
-	char init_str[10] = "starting\r\n";
 
 	for (i = 0; i < (sizeof init_str); i++) {
 		while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
@@ -153,31 +156,32 @@ void main( void )
 //		}
 //		fprintf(MYF,"\n");
 //	fflush(MYF);
-
-	for (i = 0; i < (sizeof hdr_str); i++) {
-		while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
-		UCA0TXBUF = hdr_str[i];
-	}
-	for (i = 0; i < PACKET_LEN_RX+1; i++) {
-		while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
-		if ((RxBuffer[i]>>4) < 10) {
-		  UCA0TXBUF = (RxBuffer[i]>>4)+0x30;
-		} else {
-		  UCA0TXBUF = (RxBuffer[i]>>4)+0x37;
+    if(!buttonPressed) {
+    	for (i = 0; i < (sizeof hdr_str); i++) {
+			while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
+			UCA0TXBUF = hdr_str[i];
+		}
+		for (i = 0; i < PACKET_LEN_RX+1; i++) {
+			while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
+			if ((RxBuffer[i]>>4) < 10) {
+			  UCA0TXBUF = (RxBuffer[i]>>4)+0x30;
+			} else {
+			  UCA0TXBUF = (RxBuffer[i]>>4)+0x37;
+			}
+			while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
+			if ((RxBuffer[i]%16) < 10) {
+			  UCA0TXBUF = (RxBuffer[i]%16)+0x30;
+			} else {
+			  UCA0TXBUF = (RxBuffer[i]%16)+0x37;
+			}
+			while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
+			UCA0TXBUF = 0x20;
 		}
 		while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
-		if ((RxBuffer[i]%16) < 10) {
-		  UCA0TXBUF = (RxBuffer[i]%16)+0x30;
-		} else {
-		  UCA0TXBUF = (RxBuffer[i]%16)+0x37;
-		}
+		UCA0TXBUF = 0x0D;
 		while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
-		UCA0TXBUF = 0x20;
-	}
-	while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
-	UCA0TXBUF = 0x0D;
-	while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
-	UCA0TXBUF = 0x0A;
+		UCA0TXBUF = 0x0A;
+    }
 
     if (buttonPressed)                      // Process a button press->transmit
     {
@@ -187,6 +191,8 @@ void main( void )
 
       ReceiveOff();
       receiving = 0;
+      TxBuffer[0] = UCA0RXBUF-48;
+      TxBuffer[1] = RxBuffer[PACKET_LEN_RX];
       Transmit( (unsigned char*)TxBuffer, sizeof TxBuffer);
       transmitting = 1;
 
@@ -248,7 +254,7 @@ __interrupt void PORT1_ISR(void)
     case 12: break;                         // P1.5 IFG
     case 14: break;                         // P1.6 IFG
     case 16:                                // P1.7 IFG
-      P1IE = 0;                             // Debounce by disabling buttons
+      //P1IE = 0;                             // Debounce by disabling buttons
       buttonPressed = 1;
       __bic_SR_register_on_exit(LPM3_bits); // Exit active
       break;
@@ -273,6 +279,7 @@ void ReceiveOn(void)
   RF1AIE  |= BIT9;                          // Enable the interrupt
 
   // Radio is in IDLE following a TX, so strobe SRX to enter Receive Mode
+  Strobe( RF_SIDLE );
   Strobe( RF_SRX );
 }
 
@@ -320,11 +327,13 @@ __interrupt void CC1101_ISR(void)
       }
       else if(transmitting)		    // TX end of packet
       {
-        RF1AIE &= ~BIT9;                    // Disable TX end-of-packet interrupt
+        //RF1AIE &= ~BIT9;                    // Disable TX end-of-packet interrupt
         P3OUT &= ~BIT6;                     // Turn off LED after Transmit
         transmitting = 0;
+
+    	ReceiveOn();
+    	receiving = 1;
       }
-      else while(1); 			    // trap
       break;
     case 22: break;                         // RFIFG10
     case 24: break;                         // RFIFG11
@@ -344,7 +353,14 @@ __interrupt void USCI_A0_ISR(void)
   {
   case 0:break;                             // Vector 0 - no interrupt
   case 2:                                   // Vector 2 - RXIFG
-    // do nothing
+	  P3OUT |= BIT6;                        // Pulse LED during Transmit
+	  ReceiveOff();
+	  receiving = 0;
+	  TxBuffer[0] = UCA0RXBUF-48;
+	  TxBuffer[1] = RxBuffer[PACKET_LEN_RX];
+
+	  Transmit( (unsigned char*)TxBuffer, sizeof TxBuffer);
+	  transmitting = 1;
     break;
   case 4:break;                             // Vector 4 - TXIFG
   default: break;
