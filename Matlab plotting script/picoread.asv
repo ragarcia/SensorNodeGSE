@@ -114,7 +114,6 @@ while(1)
                     newval(15)*2^8+newval(16) ...    % current_max
                     newval(17) ...    % wake_state
                     newval(18) ...    % pkt_cnt
-                    newval(19)*2^8+newval(20) ...    % transmit power
                     newval(28)*2^24+newval(29)*2^16+newval(30)*2^8+newval(31) ...   %RTC
                     newval(32) ...    % chksum
                     newval(end-1) ...   % RSSI

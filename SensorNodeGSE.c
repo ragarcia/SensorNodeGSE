@@ -98,6 +98,19 @@ const char hdr_str[17] = "packet contents: ";
 const char init_str[10] = "starting\r\n";
 const char echo_str[9]= "Sending: ";
 
+void Init_TimerA () {
+/*
+	TA1CCR0 = 1000;		// PWM period
+	TA1CCTL1 = OUTMOD_7 + CCIE;	// CCR1 reset/set
+	TA1CCR1 = 0;		// CCR1 PWM duty cycle
+	TA1CTL = TAIE + TASSEL_2 + MC_1 + TACLR;	// SMCLK, up mode, clear TAR
+*/
+	TA1CCTL0 = CCIE;                          // CCR0 interrupt enabled
+	  TA1CCR0 = 65000;
+	  TA1CTL = TASSEL_2 + MC_1 + TACLR;         // SMCLK, upmode, clear TAR
+
+}
+
 void main( void )
 {
 	// Stop watchdog timer to prevent time out reset
@@ -124,6 +137,10 @@ void main( void )
 	UCA0MCTL |= UCBRS_1 + UCBRF_0;            // Modulation UCBRSx=1, UCBRFx=0
 	UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
 	UCA0IE |= UCRXIE;                         // Enable USCI_A0 RX interrupt
+
+	// set up timer A
+	Init_TimerA();
+
 	__bis_SR_register(GIE);                   // interrupts enabled
 
 	for (i = 0; i < (sizeof init_str); i++) {
@@ -161,7 +178,7 @@ void main( void )
 			while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
 			UCA0TXBUF = hdr_str[i];
 		}
-		for (i = 0; i < PACKET_LEN_RX+1; i++) {
+		for (i = 0; i < PACKET_LEN_RX+2; i++) {
 			while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
 			if ((RxBuffer[i]>>4) < 10) {
 			  UCA0TXBUF = (RxBuffer[i]>>4)+0x30;
@@ -295,6 +312,12 @@ void ReceiveOff(void)
   Strobe( RF_SFRX  );
 }
 
+#pragma vector=TIMER1_A0_VECTOR
+__interrupt void TIMER1_A0_ISR(void)
+{
+  P1OUT ^= 0x01;                            // Toggle P1.0
+}
+
 #pragma vector=CC1101_VECTOR
 __interrupt void CC1101_ISR(void)
 {
@@ -324,6 +347,7 @@ __interrupt void CC1101_ISR(void)
         if(RxBuffer[CRC_LQI_IDX] & CRC_OK)  {
           P1OUT ^= BIT0;                    // Toggle LED1
         }
+        RxBuffer[CRC_LQI_IDX] &= 0x7F;	// force CRC bit to 0
       }
       else if(transmitting)		    // TX end of packet
       {
