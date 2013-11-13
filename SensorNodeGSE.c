@@ -87,6 +87,7 @@ unsigned char buttonPressed = 0;
 unsigned int i = 0;
 unsigned int j = 0;
 unsigned int toggle = 0;
+int pkt_timeout = 0;
 
 unsigned char transmitting = 0;
 unsigned char receiving = 0;
@@ -208,8 +209,12 @@ void main( void )
 
       ReceiveOff();
       receiving = 0;
-      TxBuffer[0] = UCA0RXBUF-48;
-      TxBuffer[1] = RxBuffer[PACKET_LEN_RX];
+      TxBuffer[0] = 0x01;
+      if (pkt_timeout > 5) {
+    	  TxBuffer[1] = 0x80;
+      } else {
+    	  TxBuffer[1] = RxBuffer[PACKET_LEN_RX];
+      }
       Transmit( (unsigned char*)TxBuffer, sizeof TxBuffer);
       transmitting = 1;
 
@@ -315,8 +320,20 @@ void ReceiveOff(void)
 #pragma vector=TIMER1_A0_VECTOR
 __interrupt void TIMER1_A0_ISR(void)
 {
-  P1OUT ^= 0x01;                            // Toggle P1.0
+//  //P1OUT ^= 0x01;                            // Toggle P1.0
+//	P3OUT |= BIT6;                        // Pulse LED during Transmit
+//	ReceiveOff();
+//	receiving = 0;
+//	TxBuffer[0] = 0x01;
+//	TxBuffer[1] = RxBuffer[PACKET_LEN_RX];
+//
+//	Transmit( (unsigned char*)TxBuffer, sizeof TxBuffer);
+//	transmitting = 1;
+//	__bic_SR_register_on_exit(LPM3_bits);
+	pkt_timeout += 1;
+	buttonPressed = 1;
 }
+
 
 #pragma vector=CC1101_VECTOR
 __interrupt void CC1101_ISR(void)
@@ -345,7 +362,10 @@ __interrupt void CC1101_ISR(void)
 
         // Check the CRC results
         if(RxBuffer[CRC_LQI_IDX] & CRC_OK)  {
-          P1OUT ^= BIT0;                    // Toggle LED1
+        	P1OUT ^= BIT0;                    // Toggle LED1
+        	pkt_timeout = 0;
+        } else {	// bad CRC
+        	pkt_timeout += 1;
         }
         RxBuffer[CRC_LQI_IDX] &= 0x7F;	// force CRC bit to 0
       }
@@ -377,7 +397,7 @@ __interrupt void USCI_A0_ISR(void)
   {
   case 0:break;                             // Vector 0 - no interrupt
   case 2:                                   // Vector 2 - RXIFG
-	  P3OUT |= BIT6;                        // Pulse LED during Transmit
+	  //P3OUT |= BIT6;                        // Pulse LED during Transmit
 	  ReceiveOff();
 	  receiving = 0;
 	  TxBuffer[0] = UCA0RXBUF-48;

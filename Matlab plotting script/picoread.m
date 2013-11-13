@@ -8,7 +8,8 @@ tline = fgetl(FID);
 
 %       [cap val (0:1) duty cycle (2:3) cap_min (4:5) cap_max (6:7) cap_avg (8:9) 
 %       current_val (10:11) current_min (12:13) current_max(14:15) wake_stat (16) pkt_cnt (17)
-%       (blank bytes) RTC (27:30) chksum (31) RSSI (32) LQI (33)]
+%       TX_power (18:19) blank bytes (20:21) cmd_op/data (22:23) cmd_rcv_cnt (24:25) blank bytes (26)
+%       RTC (27:30) chksum (31) RSSI (32) LQI (33)]
 
 legend_arr = {'cap val' 'duty cycle' 'cap\_min'  'cap\_max' 'cap\_avg' ... 
                 'current\_val' 'current\_min' 'current\_max' 'wake\_stat' 'pkt\_cnt' ...
